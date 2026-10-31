@@ -74,7 +74,6 @@ This command will requrie root password to install some system-wide rependencies
 ### Adjust the Build
 
 For some reason on my machine I have to remove `--with-system-libvpx` from the `engine/.mozconfig`
-# remove --with-system-libvpx from engine/.mozconfig
 ```sh
 sed -i '' '/--with-system-libvpx/d' engine/.mozconfig
 ```
@@ -235,3 +234,4 @@ dd $(which zen)
 ## Limitations
 1. Building with `export ZEN_RELEASE=1` is not implemented yet.
 2. Proper packaging
+3. Doesn't support working with headphones, needs to be recompiled with at least `ac_add_options --enable-pulseaudio` in `engine/mozconfig`
