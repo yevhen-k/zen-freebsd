@@ -80,10 +80,11 @@ sed -i '' '/--with-system-libvpx/d' engine/.mozconfig
 
 Also `alsa`, `jack`, and `sndio` should be disabled in the `engine/.mozconfig` on my machine if any.
 
-We should configure local mozconfig that will hold our local setting. On my machine I disable wasm sandbox because with enabled wasm sandbox zen won't compile. This config is convenient to store `MOZ_GOOGLE_LOCATION_SERVICE_API_KEY` and `MOZ_GOOGLE_SAFEBROWSING_API_KEY`.
+We should configure local mozconfig that will hold our local setting. On my machine I disable wasm sandbox because with enabled wasm sandbox zen won't compile. This config is convenient to store `MOZ_GOOGLE_LOCATION_SERVICE_API_KEY` and `MOZ_GOOGLE_SAFEBROWSING_API_KEY`. Also let's add support for pulseaudio.
 ```sh
 mkdir -p configs/freebsd
 echo -e "# FreeBSD development configuration.\n# disable wams temporary\nac_add_options --without-wasm-sandboxed-libraries" >> configs/freebsd/mozconfig
+echo -e "\nac_add_options --enable-pulseaudio" >> configs/freebsd/mozconfig
 
 cat engine/.mozconfig | grep MOZ_GOOGLE_LOCATION_SERVICE_API_KEY >> configs/freebsd/mozconfig
 cat engine/.mozconfig | grep MOZ_GOOGLE_SAFEBROWSING_API_KEY >> configs/freebsd/mozconfig
@@ -234,4 +235,3 @@ dd $(which zen)
 ## Limitations
 1. Building with `export ZEN_RELEASE=1` is not implemented yet.
 2. Proper packaging
-3. Doesn't support working with headphones, needs to be recompiled with at least `ac_add_options --enable-pulseaudio` in `engine/mozconfig`
