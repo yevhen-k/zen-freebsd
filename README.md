@@ -1,4 +1,4 @@
-# Zen Browser 1.23.4b on FreeBSD 15.1-RELEASE-p6 (FireFox 158.0.1) 
+# Zen Browser 1.24b on FreeBSD 15.1-RELEASE-p6 (FireFox 159.0) 
 
 ## Prerequisites
 
@@ -16,10 +16,10 @@ sudo pkg install wasi-libc19 wasi-libcxx19
 
 We need posts for firefox source code and freebsd patches
 ```sh
-git clone https://git.freebsd.org/ports.git
+git clone https://github.com/freebsd/freebsd-ports.git ports
 export PORTSDIR=$HOME/dev/ports
-cd posts
-git checkout 4fb33f1da0537e23d7b86c7ac998cdc3a257cfe7 # for firefix 158.0.1
+cd ports
+git checkout 0e2b6a5 # for firefox 159.0
 
 cd www/firefox/
 make -V DISTVERSION
@@ -28,13 +28,12 @@ make patch
 
 ### Zen
 
-Release [1.23.4b](https://github.com/zen-browser/desktop/releases#release-1.23.4b)
+Release [1.24b](https://github.com/zen-browser/desktop/releases/tag/1.24b)
 
 ```sh
-
-curl -sL https://github.com/zen-browser/desktop/archive/refs/tags/1.23.4b.zip -o 1.23.4b.zip
-unzip 1.23.4b.zip
-cd desktop-1.23.4b/
+git clone https://github.com/zen-browser/desktop.git zen-freebsd
+cd zen-freebsd
+git checkout f75390a # for zen 1.24b
 
 python3 -m venv venv
 source venv/bin/activate
@@ -47,7 +46,7 @@ npm install sharp
 
 Copy patched FireFox to Zen:
 ```sh
-cp -r $HOME/dev/ports/www/firefox/work/firefox-158.0.1 engine
+cp -r ~/dev/ports/www/firefox/work/firefox-159.0 engine
 ```
 
 ## Adjust node libs for FreeBSD
@@ -66,6 +65,18 @@ sed -i '' "/^    linux: 'linux',$/a\\
 
 ## Initialize the Build
 ```sh
+npm run init
+# ^ this command might fail with:
+# ModuleNotFoundError: No module named 'zstandard'
+# in this case we need to install zstandard with this commands:
+# 1. get current python interpreter path
+cd engine
+./mach python -c "import sys; print(sys.executable)"
+# ~/.mozbuild/srcdirs/engine-7cf57152d407/_virtualenvs/common/bin/python
+# 2. install zstandard with this interpreter
+~/.mozbuild/srcdirs/engine-7cf57152d407/_virtualenvs/common/bin/python -m pip install zstandard==0.24.0
+# 3. run `npm run init` again
+cd ..
 npm run init
 ```
 
@@ -95,7 +106,7 @@ cat engine/.mozconfig | grep MOZ_GOOGLE_SAFEBROWSING_API_KEY >> configs/freebsd/
 `npm run import` applies patches. Console output reports no error but in reality patches are not applyed.
 
 ```sh
-npm run surfer -- ci --brand release --display-version 1.23.4b
+npm run surfer -- ci --brand release --display-version 1.24b
 npm run download
 source $HOME/.cargo/env
 npm run import
@@ -124,15 +135,6 @@ export LLVM_CONFIG=/usr/local/llvm19/bin/llvm-config
 export SURFER_PLATFORM="freebsd"
 
 ./mach --no-interactive bootstrap --application-choice browser
-# ^ it might fail complaining `ModuleNotFoundError: No module named 'zstandard'`.
-# in this case we need to install zstandard with this commands:
-# 1. get current python interpreter path
-./mach python -c "import sys; print(sys.executable)"
-# ~/.mozbuild/srcdirs/engine-7b01386296f8/_virtualenvs/common/bin/python
-# 2. install zstandard with this interpreter
-~/.mozbuild/srcdirs/engine-7b01386296f8/_virtualenvs/common/bin/python -m pip install zstandard==0.24.0
-# and then run ./mach <...> again
-./mach --no-interactive bootstrap --application-choice browser
 ```
 
 
@@ -150,15 +152,11 @@ sed -i -e 's/^#ifdef XP_LINUX$/#if defined(XP_LINUX) || defined(XP_FREEBSD)/' $(
 Now we're ready to build:
 
 ```sh
-git add .
-git commit -m "zen of freebsd"
-# ^ this is required by `npm build`
-
 # export ZEN_RELEASE=1
 npm run build
 # ^ this command will hang. to check what is happened use:
 # cd engine &&./mach build
-# Multiple default mozconfig files present. Remove all but one. desktop-1.23.4b/engine/.mozconfig, desktop-1.23.4b/engine/mozconfig
+# Multiple default mozconfig files present. Remove all but one. desktop-1.24b/engine/.mozconfig, desktop-1.24b/engine/mozconfig
 # `mozconfig` contains all our custom configs from `configs/freebsd/mozconfig`, so we delete `engine/.mozconfig`
 rm engine/.mozconfig
 # and restart the build
@@ -171,8 +169,7 @@ Packaging has some issues. For instance, `#!/bin/bash` shebang is hardcoded and 
 
 ```sh
 mkdir -p tools/update-packaging
-ln -s ../../engine/tools/update-packaging/make_full_update.sh \
-                                                       tools/update-packaging/make_full_update.sh
+ln -s ../../engine/tools/update-packaging/make_full_update.sh tools/update-packaging/make_full_update.sh
 sed -i '' '1s|^#!/bin/bash$|#!/usr/local/bin/bash|' engine/tools/update-packaging/make_full_update.sh
 
 sed -i '' "/await (0, browser_1\.generateBrowserUpdateFiles)();/c\\
@@ -188,20 +185,12 @@ npm run package
 Check packaged Zen browser:
 ```sh
 ls -l dist
-# total 208971
-# -rw-r--r--  1 user user         0 Oct 31 16:11 bin.l10n-stage.lock
-# -rw-r--r--  1 user user 106518101 Oct 31 16:14 output.mar
-# -rw-r--r--  1 user user        44 Oct 31 16:12 package_name.txt
-# -rw-r--r--  1 user user 107034760 Oct 31 16:12 zen-1.23.4b.en-US.freebsd15.1-x86_64.tar.xz
-# -rw-r--r--  1 user user       102 Oct 31 16:12 zen-1.23.4b.en-US.freebsd15.1-x86_64.txt
-# -rw-r--r--  1 user user    265405 Oct 31 16:12 zen-1.23.4b.en-US.freebsd15.1-x86_64.xpt_artifacts.zip
-
-du -hs .
-# 13G	.
-du -hs ../ports
-# 6.7G	../ports
-du -hs ~/.mozbuild
-# 70M	~/.mozbuild
+# bin.l10n-stage.lock
+# output.mar
+# package_name.txt
+# zen-1.24b.en-US.freebsd15.1-x86_64.tar.xz
+# zen-1.24b.en-US.freebsd15.1-x86_64.txt
+# zen-1.24b.en-US.freebsd15.1-x86_64.xpt_artifacts.zip
 ```
 
 ## "Installing"
@@ -209,13 +198,15 @@ du -hs ~/.mozbuild
 I'm extracting tar archive to my locad dir that is in my PATH:
 
 ```sh
-tar -xf dist/zen-1.23.4b.en-US.freebsd15.1-x86_64.tar.xz -C ~/opt/
+mv ~/opt/zen ~/opt/zen-prev
+rm -f ~/opt/bin/zen
+tar -xf dist/zen-1.24b.en-US.freebsd15.1-x86_64.tar.xz -C ~/opt/
 ln -s ~/opt/zen/zen ~/opt/bin/zen
 
 which zen
 # ~/opt/bin/zen
 
-dd $(which zen)
+ldd $(which zen)
 # ~/opt/bin/zen:
 #	libc++.so.1 => /lib/libc++.so.1 (0x1541f8c2f000)
 #	libcxxrt.so.1 => /lib/libcxxrt.so.1 (0x1541f957b000)
@@ -228,10 +219,9 @@ dd $(which zen)
 ```
 
 ## References:
-- https://docs.zen-browser.app/contribute/desktop/building
 - https://github.com/zen-browser/desktop/blob/dev/.github/workflows/linux-release-build.yml
 - https://github.com/zen-browser/desktop/blob/dev/.github/workflows/src/release-build.sh
 
 ## Limitations
 1. Building with `export ZEN_RELEASE=1` is not implemented yet.
-2. Proper packaging
+2. No AUS (automatic update system)
